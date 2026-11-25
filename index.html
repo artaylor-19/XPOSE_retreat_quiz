@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  // Live sync settings (Supabase project URL and anon public key; both are designed to be public)
+  window.QUIZ_CONFIG = {
+    supabaseUrl: "https://fkecomvvydpcyjetbpvp.supabase.co",
+    supabaseKey: "sb_publishable_RFvXkELEojTwcbxtEiTBGw_CzAYkmRN",
+    room: "retreat-quiz"
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="adapter.js"></script>
+<style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); } body { margin: 0; } img { max-width: 100%; } [hidden] { display: none !important; }</style>
+</head>
+<body>
+<title>Retreat Quiz Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: host = big-screen stage + side scoreboard; team = one-column phone card. Pub "bottle green and brass" palette. */
+:root {
+  --bg: #eef2ec;
+  --surface: #ffffff;
+  --sunk: #e1e8df;
+  --ink: #15241d;
+  --muted: #55665d;
+  --line: #c9d4c6;
+  --brass: #a8691a;
+  --brass-ink: #ffffff;
+  --good: #1f7a4a;
+  --bad: #b23a2b;
+  --opt-a: #d9502c; --opt-b: #2a7da3; --opt-c: #d6a500; --opt-d: #8552ad;
+  --opt-c-ink: #1d1600;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1d17; --surface: #16291f; --sunk: #0a1611; --ink: #e6eee4; --muted: #9db0a4; --line: #2b4436;
+  --brass: #e3a54d; --brass-ink: #1b1204; --good: #4cc584; --bad: #f07a68; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0e1d17; --surface: #16291f; --sunk: #0a1611; --ink: #e6eee4; --muted: #9db0a4; --line: #2b4436;
+  --brass: #e3a54d; --brass-ink: #1b1204; --good: #4cc584; --bad: #f07a68; color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+#app { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 32px; max-width: 1280px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.1; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 16px; font-weight: 700; }
+a.btn { text-decoration: none; color: inherit; display: inline-block; }
+.btn:hover { border-color: var(--brass); }
+.btn.primary { background: var(--brass); color: var(--brass-ink); border-color: var(--brass); font-size: 18px; padding: 12px 24px; }
+.btn.small { padding: 5px 12px; font-size: 14px; }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* top bar */
+.bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
+.brand small { font-family: var(--body); font-weight: 400; font-size: 14px; color: var(--muted); margin-left: 8px; }
+.tabs { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 4px; gap: 4px; }
+.tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pill.live .dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+
+/* host run */
+.run { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .run { grid-template-columns: minmax(0, 1fr); } }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: clamp(18px, 3vw, 40px); display: flex; flex-direction: column; gap: 22px; min-height: 420px; }
+.stage .qtext { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 3.6vw, 52px); line-height: 1.08; letter-spacing: -.015em; text-wrap: balance; }
+.stage .meta { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.qcount { font-family: var(--display); font-weight: 600; color: var(--brass); }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .opts { grid-template-columns: minmax(0, 1fr); } }
+.opt { display: flex; gap: 12px; align-items: center; border-radius: var(--radius); padding: 14px 16px; color: #fff; font-weight: 700; font-size: clamp(17px, 1.8vw, 24px); border: 0; text-align: left; min-height: 64px; transition: opacity .2s, transform .2s; }
+.opt .letter { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.22); font-family: var(--display); font-weight: 800; }
+.opt span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.o0 { background: var(--opt-a); } .o1 { background: var(--opt-b); } .o2 { background: var(--opt-c); color: var(--opt-c-ink); } .o3 { background: var(--opt-d); }
+.o2 .letter { background: rgba(0,0,0,.12); }
+.opt.dim { opacity: .28; }
+.opt.win { outline: 4px solid var(--ink); outline-offset: 3px; }
+.qimg { display: block; max-width: 100%; max-height: 46vh; width: auto; margin: 0 auto; border-radius: var(--radius); object-fit: contain; background: var(--sunk); }
+.phone .qimg { max-height: 40vh; }
+.thumb { max-width: 160px; max-height: 110px; border-radius: 10px; display: block; object-fit: cover; }
+.lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; }
+@media (max-width: 700px) { .lobby { grid-template-columns: minmax(0, 1fr); } }
+.qr { background: #ffffff; border-radius: 18px; padding: 16px; display: grid; gap: 8px; justify-items: center; color: #0e1d17; border: 1px solid var(--line); }
+.qr-code { width: 220px; height: 220px; display: grid; place-items: center; }
+.qr-code img, .qr-code canvas { width: 220px; height: 220px; }
+.qr-url { font-size: 13px; font-weight: 700; max-width: 220px; overflow-wrap: anywhere; text-align: center; color: #0e1d17; }
+.headline { font-size: clamp(32px, 5vw, 60px); letter-spacing: -.02em; }
+.markq { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.markq .who { font-weight: 700; }
+.mark.half, .chip.half { background: color-mix(in srgb, var(--brass) 30%, var(--surface)); }
+.answerbox { border: 2px dashed var(--line); border-radius: var(--radius); padding: 18px; font-size: 20px; color: var(--muted); }
+.reveal { border-radius: var(--radius); padding: 16px 20px; background: color-mix(in srgb, var(--good) 14%, var(--surface)); border: 2px solid var(--good); }
+.reveal b { font-family: var(--display); font-size: clamp(22px, 2.6vw, 34px); display: block; color: var(--ink); }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.progress { height: 8px; border-radius: 99px; background: var(--sunk); overflow: hidden; flex: 1; min-width: 120px; }
+.progress i { display: block; height: 100%; background: var(--brass); transition: width .3s; }
+
+.lobby-hero { display: flex; flex-direction: column; gap: 14px; }
+.lobby-hero h2 { font-size: clamp(32px, 5vw, 64px); letter-spacing: -.02em; }
+.steps { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; counter-reset: s; }
+.steps li { counter-increment: s; display: flex; gap: 12px; align-items: baseline; font-size: 19px; }
+.steps li::before { content: counter(s); font-family: var(--display); font-weight: 800; color: var(--brass); width: 22px; flex: none; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 6px 12px; border-radius: 999px; background: var(--sunk); font-weight: 700; font-size: 15px; display: inline-flex; gap: 6px; align-items: center; }
+.chip.in { background: color-mix(in srgb, var(--brass) 22%, var(--surface)); }
+.chip.ok { background: color-mix(in srgb, var(--good) 22%, var(--surface)); }
+.chip.no { background: color-mix(in srgb, var(--bad) 16%, var(--surface)); }
+.chip .off { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .6; }
+
+.side { display: flex; flex-direction: column; gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.panel h3 { font-size: 18px; }
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.board li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--sunk); }
+.board li .pos { font-family: var(--display); font-weight: 800; color: var(--muted); }
+.board li:first-child .pos { color: var(--brass); }
+.board li .nm { font-weight: 700; overflow-wrap: anywhere; }
+.board li .sc { font-family: var(--display); font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; }
+.board li.me { outline: 2px solid var(--brass); }
+.board.big li { padding: 14px 16px; font-size: 20px; }
+.board.big li .sc { font-size: 28px; }
+.ans-list { display: grid; gap: 6px; }
+.ans { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--sunk); }
+.ans .who { font-size: 13px; color: var(--muted); font-weight: 700; }
+.ans .what { overflow-wrap: anywhere; }
+.mark { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 14px; }
+.mark.ok { background: var(--good); color: #fff; border-color: var(--good); }
+
+/* editor */
+.editor { display: grid; gap: 14px; max-width: 900px; }
+.qcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+.qcard .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qcard .head .idx { font-family: var(--display); font-weight: 800; color: var(--brass); min-width: 32px; }
+label.f { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--muted); min-width: 0; }
+input[type=text], input[type=number], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; width: 100%; box-sizing: border-box; color: var(--ink); font-weight: 400; font-size: 16px; }
+textarea { resize: vertical; min-height: 56px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.optedit { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; }
+.optedit input[type=radio] { width: 20px; height: 20px; accent-color: var(--good); }
+.fields3 { display: grid; grid-template-columns: minmax(0, 1fr) 150px 90px; gap: 8px; }
+@media (max-width: 560px) { .fields3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .fields3 > :first-child { grid-column: 1 / -1; } }
+.empty { text-align: center; padding: 40px 16px; border: 2px dashed var(--line); border-radius: 16px; display: grid; gap: 10px; justify-items: center; }
+.confirm { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+
+/* team phone */
+.phone { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.phone .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.phone .qtext { font-family: var(--display); font-weight: 800; font-size: 24px; line-height: 1.15; }
+.phone .opts { grid-template-columns: minmax(0, 1fr); }
+.phone .opt { min-height: 60px; font-size: 18px; }
+.phone .opt.picked { outline: 4px solid var(--ink); outline-offset: 2px; }
+.phone .opt.notpicked { opacity: .45; }
+.teamtag { display: flex; align-items: center; gap: 10px; }
+.teamtag b { font-family: var(--display); font-size: 18px; overflow-wrap: anywhere; }
+.big-status { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.1; }
+.verdict { border-radius: 16px; padding: 18px; font-family: var(--display); font-weight: 800; font-size: 28px; color: #fff; }
+.verdict.ok { background: var(--good); } .verdict.half { background: var(--brass); color: var(--brass-ink); } .verdict.no { background: var(--bad); }
+.verdict small { display: block; font-family: var(--body); font-weight: 400; font-size: 16px; opacity: .92; margin-top: 4px; }
+.locked { display: flex; gap: 10px; align-items: center; font-weight: 700; color: var(--good); }
+.note { font-size: 14px; color: var(--muted); }
+.wait-dots::after { content: "…"; animation: dots 1.4s steps(4) infinite; display: inline-block; width: 1.2em; overflow: hidden; vertical-align: bottom; }
+@keyframes dots { 0% { width: 0 } 100% { width: 1.2em } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div id="app"><p class="muted">Loading the quiz…</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const LETTERS = ["A", "B", "C", "D"];
+  const app = document.getElementById("app");
+
+  // ---------- tiny DOM helper (all text via textContent) ----------
+  function h(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (k === "value") n.value = v;
+      else if (k === "checked") n.checked = !!v;
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of kids.flat(Infinity)) {
+      if (c == null || c === false) continue;
+      n.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    }
+    return n;
+  }
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\b(the|a|an)\b/g, " ").replace(/\s+/g, " ").trim();
+  const teamKey = (name) => "t_" + (String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "team");
+  const uid = () => Math.random().toString(36).slice(2, 10);
+
+  // Render while keeping focus/caret in a text field that survives (same id).
+  function paint(root, node) {
+    const a = document.activeElement;
+    const fid = a && a.id && root.contains(a) ? a.id : null;
+    const sel = fid && "selectionStart" in a ? [a.selectionStart, a.selectionEnd] : null;
+    root.replaceChildren(node);
+    if (fid) {
+      const n = document.getElementById(fid);
+      if (n) { n.focus({ preventScroll: true }); if (sel) try { n.setSelectionRange(sel[0], sel[1]); } catch {} }
+    }
+  }
+
+  // ---------- shared shapes ----------
+  // quiz: { title, joinUrl, questions: [{ id, round, type: "choice"|"text", text, options[4], answer (index | "a | b"), points, image }] }
+  // game: { phase: lobby|open|closed|marking|reveal|scores|final, qi, teams{key:name}, answers{qid:{key:value}},
+  //         marks{qid:{key: 0 | 0.5 | 1}}, revealed{qid:true} }
+  const DEFAULT_JOIN = location.origin + location.pathname;
+  const blankGame = () => ({ phase: "lobby", qi: -1, teams: {}, answers: {}, marks: {}, revealed: {} });
+  const markVal = (m) => (m === true ? 1 : typeof m === "number" ? m : 0);
+  const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  function answerLabel(q) {
+    if (!q) return "";
+    if (q.type === "choice") { const i = Number(q.answer); return (LETTERS[i] || "?") + ". " + (q.options?.[i] || ""); }
+    return String(q.answer || "").split("|")[0].trim();
+  }
+  function editDistance(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  // Lenient first pass; the host reviews every mark before anything is revealed.
+  function autoMark(q, v) {
+    if (v == null || v === "") return 0;
+    if (q.type === "choice") return Number(v) === Number(q.answer) ? 1 : 0;
+    const got = norm(v); if (!got) return 0;
+    const close = (a, b) => {
+      if (a === b) return true;
+      const slack = a.length >= 9 ? 2 : a.length >= 5 ? 1 : 0; // forgive small typos
+      return slack > 0 && Math.abs(a.length - b.length) <= slack && editDistance(a, b) <= slack;
+    };
+    const gw = got.split(" ");
+    const ok = String(q.answer || "").split("|").map(norm).filter(Boolean).some((a) => {
+      if (close(a, got)) return true;
+      const aw = a.split(" ");
+      if (aw.every((w) => gw.some((g) => close(w, g)))) return true;                 // "the river nile" for "nile"
+      if (aw.length > 1 && gw.length === 1 && got.length >= 4 && close(aw[aw.length - 1], got)) return true; // surname only
+      return false;
+    });
+    return ok ? 1 : 0;
+  }
+  const imgSrc = (q) => (q && typeof q.image === "string" && window.__imgs && typeof window.__imgs[q.image] === "string" && window.__imgs[q.image].startsWith("data:image/") ? window.__imgs[q.image] : null);
+  function roundBounds(quiz, i) {
+    const qs = quiz.questions; const r = qs[i]?.round || "";
+    let a = i, b = i;
+    while (a > 0 && (qs[a - 1].round || "") === r) a--;
+    while (b < qs.length - 1 && (qs[b + 1].round || "") === r) b++;
+    return [a, b];
+  }
+  function roundNumber(quiz, i) { let n = 0; for (let j = 0; j <= i; j++) if (j === 0 || (quiz.questions[j].round || "") !== (quiz.questions[j - 1].round || "")) n++; return n; }
+  function scoreBoard(quiz, game) {
+    const scores = {};
+    for (const k of Object.keys(game.teams)) scores[k] = 0;
+    for (const q of quiz.questions) {
+      if (!game.revealed?.[q.id]) continue; // only revealed answers count, so the board never spoils a round
+      const m = game.marks[q.id]; if (!m) continue;
+      for (const [k, v] of Object.entries(m)) scores[k] = (scores[k] || 0) + markVal(v) * (Number(q.points) || 1);
+    }
+    return Object.entries(scores).map(([k, s]) => ({ k, name: game.teams[k] || k, s }))
+      .sort((a, b) => b.s - a.s || a.name.localeCompare(b.name));
+  }
+  function boardList(rows, opts = {}) {
+    if (!rows.length) return h("p", { class: "muted" }, "No teams yet.");
+    let lastS = null, pos = 0;
+    return h("ol", { class: "board" + (opts.big ? " big" : "") }, rows.map((r, i) => {
+      if (r.s !== lastS) { pos = i + 1; lastS = r.s; }
+      return h("li", { class: opts.me === r.k ? "me" : null },
+        h("span", { class: "pos num" }, pos), h("span", { class: "nm" }, r.name), h("span", { class: "sc" }, fmt(r.s)));
+    }));
+  }
+
+  // ================================================================
+  //                             BOOT
+  // ================================================================
+  let room = null, db = null, user = null, assets = null;
+  let roomLive = false;
+
+  async function boot() {
+    [user, room, db] = await Promise.all([
+      claude?.use ? claude.use("user") : null,
+      claude?.use ? claude.use("room") : null,
+      claude?.use ? claude.use("db") : null,
+    ].map((p) => Promise.resolve(p).catch(() => null)));
+    const canEdit = user ? await user.canEdit().catch(() => false) : false;
+    if (room) room.onConnection((c) => { roomLive = c; rerender(); }, () => { roomLive = false; rerender(); });
+    const wantTeam = location.hash === "#team";
+    if (canEdit && !wantTeam) { assets = await Promise.resolve(claude.use("assets")).catch(() => null); Host.start(); } else Team.start(canEdit);
+    window.addEventListener("hashchange", () => location.reload());
+  }
+  let rerender = () => {};
+
+  // ================================================================
+  //                             HOST
+  // ================================================================
+  const Host = (() => {
+    let quiz = { title: "", questions: [] };
+    let game = blankGame();
+    let tab = store.get("pq.tab") || "run";
+    let quizLoaded = false, dbNote = "";
+    let lastSavedQuiz = "";
+    let confirmReset = false;
+    const quizRef = () => db.doc("quiz/main");
+    const gameRef = () => db.doc("game/main");
+
+    // one-write-at-a-time debounced saver
+    function saver(refFn, dataFn, delay) {
+      let t = null, busy = false, again = false;
+      async function run() {
+        if (busy) { again = true; return; }
+        busy = true;
+        try { await refFn().set(dataFn()); } catch (e) { dbNote = "Couldn't save just now. Changes are kept on this screen."; draw(); }
+        busy = false;
+        if (again) { again = false; run(); }
+      }
+      return () => { if (!db) return; clearTimeout(t); t = setTimeout(run, delay); };
+    }
+    const saveQuiz = saver(quizRef, () => { lastSavedQuiz = JSON.stringify(quiz); return quiz; }, 700);
+    const saveGame = saver(gameRef, () => game, 400);
+
+    const curQ = () => quiz.questions[game.qi] || null;
+
+    // ----- live room -----
+    let onlineTeams = {}; // key -> name (currently connected)
+    function readPeers(peers) {
+      const online = {};
+      let changed = false;
+      const q = curQ();
+      for (const p of peers) {
+        const pr = p.presence || {};
+        if (pr.role !== "team" || typeof pr.team !== "string") continue;
+        const name = pr.team.trim().slice(0, 30); if (!name) continue;
+        const k = teamKey(name);
+        online[k] = name;
+        if (!game.teams[k]) { game.teams[k] = name; changed = true; }
+        const a = pr.ans;
+        if (game.phase === "open" && q && a && a.q === q.id && a.v != null) {
+          const v = q.type === "choice" ? Number(a.v) : String(a.v).slice(0, 200);
+          if (q.type === "choice" && !(Number.isInteger(v) && v >= 0 && v < 4)) continue;
+          game.answers[q.id] = game.answers[q.id] || {};
+          if (game.answers[q.id][k] !== v) { game.answers[q.id][k] = v; changed = true; }
+        }
+      }
+      onlineTeams = online;
+      if (changed) { saveGame(); broadcast(); }
+    }
+
+    function payload() {
+      const q = curQ();
+      const p = {
+        v: 2, title: quiz.title || "Quiz night", phase: game.phase, total: quiz.questions.length,
+        board: scoreBoard(quiz, game).slice(0, 40).map((r) => [r.k, r.name.slice(0, 30), r.s]),
+      };
+      if (q && game.phase !== "lobby" && game.phase !== "final") {
+        const [a, b] = roundBounds(quiz, game.qi);
+        p.round = { name: String(q.round || "").slice(0, 60), no: roundNumber(quiz, game.qi), n: game.qi - a + 1, of: b - a + 1 };
+        if (["open", "closed", "reveal"].includes(game.phase)) {
+          p.q = { id: q.id, type: q.type, text: String(q.text).slice(0, 600), points: Number(q.points) || 1 };
+          if (q.type === "choice") p.q.options = (q.options || []).map((o) => String(o).slice(0, 120));
+          if (imgSrc(q)) p.q.image = q.image;
+        }
+        if (game.phase === "reveal") {
+          p.answer = answerLabel(q).slice(0, 200);
+          p.correctIdx = q.type === "choice" ? Number(q.answer) : null;
+          p.marks = {}; p.said = {};
+          for (const [k, v] of Object.entries(game.marks[q.id] || {})) p.marks[k] = markVal(v);
+          for (const [k, v] of Object.entries(game.answers[q.id] || {})) p.said[k] = q.type === "choice" ? (LETTERS[v] || "?") + ". " + String(q.options?.[v] || "").slice(0, 40) : String(v).slice(0, 60);
+        }
+      }
+      // keep within the 4 KiB room limit
+      while (JSON.stringify(p).length > 3800 && p.board.length > 5) p.board.pop();
+      while (JSON.stringify(p).length > 3900 && p.said && Object.keys(p.said).length) delete p.said[Object.keys(p.said)[0]];
+      return p;
+    }
+    let lastSent = "";
+    function broadcast(force) {
+      if (!room) return;
+      const p = payload(); const s = JSON.stringify(p);
+      if (!force && s === lastSent) return;
+      lastSent = s;
+      room.emit("state", p).catch(() => {});
+      const id = p.q && p.q.image;
+      if (id && id !== lastImg && window.__imgsSmall[id]) { lastImg = id; room.emit("img", { id, d: window.__imgsSmall[id] }).catch(() => {}); }
+    }
+    let lastImg = "";
+
+    // ----- game actions -----
+    function markQ(q, keepManual) {
+      const ans = game.answers[q.id] || {};
+      const old = game.marks[q.id] || {};
+      const m = {};
+      for (const [k, v] of Object.entries(ans)) m[k] = keepManual && k in old ? old[k] : autoMark(q, v);
+      game.marks[q.id] = m;
+    }
+    let showMarking = false;
+    function go(phase, qi) {
+      if (qi != null) game.qi = qi;
+      const q = curQ();
+      if (phase === "closed" && q) markQ(q, false);
+      if (phase === "marking" && q) { const [a, b] = roundBounds(quiz, game.qi); for (let i = a; i <= b; i++) markQ(quiz.questions[i], true); }
+      if (phase === "reveal" && q) game.revealed[q.id] = true;
+      game.phase = phase; showMarking = false;
+      saveGame(); broadcast(); draw();
+    }
+    function cycleMark(qid, k) {
+      game.marks[qid] = game.marks[qid] || {};
+      const v = markVal(game.marks[qid][k]);
+      game.marks[qid][k] = v === 0 ? 1 : v === 1 ? 0.5 : 0;
+      saveGame(); broadcast(); draw();
+    }
+    function markButton(qid, k) {
+      const v = markVal(game.marks[qid]?.[k]);
+      return h("button", { class: "mark" + (v === 1 ? " ok" : v === 0.5 ? " half" : ""), title: "Tap to change: wrong, correct, half a point", onclick: () => cycleMark(qid, k) },
+        v === 1 ? "✓ Correct" : v === 0.5 ? "½ Half" : "✗ Wrong");
+    }
+    function answerRows(q) {
+      const ans = game.answers[q.id] || {};
+      const keys = Object.keys(ans);
+      if (!keys.length) return h("p", { class: "muted" }, "No answers came in.");
+      return h("div", { class: "ans-list" }, keys.map((k) => h("div", { class: "ans" },
+        h("div", null, h("div", { class: "who" }, game.teams[k] || k),
+          h("div", { class: "what" }, q.type === "choice" ? (LETTERS[ans[k]] || "?") + ". " + (q.options?.[ans[k]] || "") : String(ans[k]))),
+        markButton(q.id, k))));
+    }
+
+    // ----- views -----
+    function topBar() {
+      const n = Object.keys(onlineTeams).length;
+      return h("div", { class: "bar" },
+        h("div", { class: "brand" }, quiz.title || "Quiz night", h("small", null, "Host")),
+        h("div", { class: "tabs", role: "tablist" },
+          [["run", "Run the quiz"], ["edit", "Questions"]].map(([id, label]) =>
+            h("button", { role: "tab", "aria-selected": String(tab === id), onclick: () => { tab = id; store.set("pq.tab", id); draw(); } }, label))),
+        h("div", { class: "spacer" }),
+        h("span", { class: "pill" + (roomLive ? " live" : "") }, h("span", { class: "dot" }),
+          room ? (roomLive ? n + (n === 1 ? " team connected" : " teams connected") : "Connecting…") : "Live sync not set up"),
+        h("a", { class: "btn small", href: "#team" }, "Try the team view"));
+    }
+
+    let qrNode = null, qrFor = "";
+    function qrBox() {
+      const url = (quiz.joinUrl || DEFAULT_JOIN).trim();
+      if (!qrNode || qrFor !== url) {
+        qrFor = url;
+        const code = h("div", { class: "qr-code", role: "img", "aria-label": "QR code for the quiz link" });
+        try { if (window.QRCode) new QRCode(code, { text: url, width: 220, height: 220, colorDark: "#0e1d17", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M }); else code.append(h("span", { class: "note" }, "QR code unavailable")); } catch { code.replaceChildren(h("span", { class: "note" }, "QR code unavailable")); }
+        qrNode = h("div", { class: "qr" }, code, h("div", { class: "qr-url" }, url.replace(/^https:\/\//, "")));
+      }
+      return qrNode;
+    }
+
+    function runView() {
+      const q = curQ();
+      const rows = scoreBoard(quiz, game);
+      const total = quiz.questions.length;
+      const stage = h("section", { class: "stage", "aria-live": "polite" });
+      const [ra, rb] = q ? roundBounds(quiz, game.qi) : [0, -1];
+      const roundName = q ? (q.round || "Round " + roundNumber(quiz, game.qi)) : "";
+      const hasNext = game.qi + 1 < total;
+      const nextRound = hasNext ? (quiz.questions[game.qi + 1].round || "the next round") : "";
+      const ctrl = h("div", { class: "controls" });
+      const primary = (label, fn) => h("button", { class: "btn primary", onclick: fn }, label);
+      const plain = (label, fn) => h("button", { class: "btn", onclick: fn }, label);
+      const meta = () => h("div", { class: "meta" },
+        h("span", { class: "qcount num" }, "Question " + (game.qi - ra + 1) + " of " + (rb - ra + 1)),
+        h("span", { class: "eyebrow" }, roundName));
+      const questionBlock = (reveal) => {
+        const out = [meta(), h("div", { class: "qtext" }, q.text || "(No question text)")];
+        if (imgSrc(q)) out.push(h("img", { class: "qimg", src: imgSrc(q), alt: "Picture for this question" }));
+        if (q.type === "choice") out.push(h("div", { class: "opts" }, (q.options || []).map((o, i) =>
+          o ? h("div", { class: "opt o" + i + (reveal ? (i === Number(q.answer) ? " win" : " dim") : "") }, h("span", { class: "letter" }, LETTERS[i]), h("span", null, o)) : null)));
+        return out;
+      };
+
+      if (!total) {
+        stage.append(h("div", { class: "empty" }, h("h2", null, "No questions yet"),
+          h("p", { class: "muted" }, "Add your rounds and questions first, then come back here to run the quiz."),
+          primary("Add questions", () => { tab = "edit"; draw(); })));
+      } else if (game.phase === "lobby") {
+        const teamChips = Object.entries(game.teams).map(([k, name]) => h("span", { class: "chip" + (onlineTeams[k] ? " in" : "") }, onlineTeams[k] ? null : h("span", { class: "off", title: "Not connected" }), name));
+        const rounds = roundNumber(quiz, total - 1);
+        stage.append(h("div", { class: "lobby" },
+          h("div", { class: "lobby-hero" },
+            h("div", { class: "eyebrow" }, rounds + (rounds === 1 ? " round · " : " rounds · ") + total + " questions"),
+            h("h2", null, "Grab a phone. Pick a team name."),
+            h("ol", { class: "steps" },
+              h("li", null, "One person per team scans the code."),
+              h("li", null, "Type your team name and tap Join."),
+              h("li", null, "Type your answers on the phone as each question appears."))),
+          qrBox()),
+          h("div", { class: "eyebrow" }, "Teams in the room"),
+          teamChips.length ? h("div", { class: "chips" }, teamChips) : h("p", { class: "muted wait-dots" }, "Waiting for the first team"));
+        ctrl.append(primary("Start the quiz", () => go("open", 0)));
+      } else if (game.phase === "final") {
+        const tie = rows[1] && rows[0] && rows[1].s === rows[0].s;
+        stage.append(h("div", { class: "eyebrow" }, "Final scores"),
+          h("h2", { class: "headline" }, !rows[0] ? "That's the quiz!" : tie ? "It's a tie at the top!" : rows[0].name + " win!"),
+          boardList(rows, { big: true }));
+        ctrl.append(plain("Back", () => go("scores")));
+      } else if (q) {
+        const ans = game.answers[q.id] || {};
+        const teamCount = Math.max(Object.keys(game.teams).length, 1);
+        if (game.phase === "open") {
+          stage.append(...questionBlock(false));
+          if (q.type !== "choice" && !imgSrc(q)) stage.append(h("div", { class: "answerbox" }, "Teams type their answer on their phones."));
+          const answered = Object.keys(ans).length;
+          ctrl.append(h("span", { class: "num", style: "font-weight:700" }, answered + " / " + teamCount + " answered"),
+            h("div", { class: "progress" }, h("i", { style: "width:" + Math.min(100, (answered / teamCount) * 100) + "%" })),
+            primary("Close answers", () => go("closed")));
+        } else if (game.phase === "closed") {
+          stage.append(...questionBlock(false));
+          ctrl.append(h("span", { class: "muted" }, "Answers closed."), h("div", { class: "spacer" }), plain("Reopen", () => go("open")),
+            game.qi < rb ? primary("Next question", () => go("open", game.qi + 1)) : primary("End of round: mark answers", () => go("marking")));
+        } else if (game.phase === "marking") {
+          stage.append(h("div", { class: "eyebrow" }, "End of " + roundName),
+            h("h2", { class: "headline" }, "Pens down! Marking in progress…"),
+            h("p", { class: "muted", style: "font-size:20px" }, "Answers and scores for this round are coming up next."));
+          ctrl.append(h("span", { class: "muted" }, "Check the marks on the right, then reveal."), h("div", { class: "spacer" }),
+            primary("Reveal the answers", () => go("reveal", ra)));
+        } else if (game.phase === "reveal") {
+          stage.append(...questionBlock(true), h("div", { class: "reveal" }, h("span", { class: "eyebrow" }, "Answer"), h("b", null, answerLabel(q))));
+          const m = game.marks[q.id] || {};
+          const got = Object.keys(game.teams).map((k) => ({ k, v: markVal(m[k]) }));
+          stage.append(h("div", { class: "chips" }, got.map(({ k, v }) => h("span", { class: "chip " + (v === 1 ? "ok" : v === 0.5 ? "half" : "no") }, (v === 1 ? "✓ " : v === 0.5 ? "½ " : "✗ ") + game.teams[k]))));
+          ctrl.append(game.qi > ra ? plain("Previous answer", () => go("reveal", game.qi - 1)) : null, h("div", { class: "spacer" }),
+            game.qi < rb ? primary("Next answer", () => go("reveal", game.qi + 1)) : primary("Show the scores", () => go("scores")));
+        } else if (game.phase === "scores") {
+          stage.append(h("div", { class: "eyebrow" }, "Scores after " + roundName), boardList(rows, { big: true }));
+          ctrl.append(plain("Back to answers", () => go("reveal", rb)), h("div", { class: "spacer" }),
+            hasNext ? primary("Start " + nextRound, () => go("open", game.qi + 1)) : primary("Final scores", () => go("final")));
+        }
+      }
+      if (ctrl.childNodes.length) stage.append(ctrl);
+
+      // side panels
+      const side = h("aside", { class: "side" });
+      if (q && game.phase === "open" || q && game.phase === "closed") {
+        const ans = game.answers[q.id] || {};
+        side.append(h("div", { class: "panel" }, h("h3", null, "Who has answered"),
+          h("p", { class: "note" }, "Answers stay hidden until the end of the round."),
+          h("div", { class: "chips" }, Object.entries(game.teams).map(([k, name]) => h("span", { class: "chip" + (k in ans ? " in" : "") }, (k in ans ? "✓ " : "") + name)))));
+      }
+      if (q && game.phase === "marking") {
+        const p = h("div", { class: "panel" }, h("h3", null, "Mark " + roundName));
+        if (!showMarking) {
+          p.append(h("p", { class: "note" }, "Close matches and small typos were marked correct automatically. Turn off or switch the projector before you open this, since it shows every team's answers."),
+            h("button", { class: "btn", onclick: () => { showMarking = true; draw(); } }, "Show answers to mark"));
+        } else {
+          p.append(h("p", { class: "note" }, "Tap a mark to change it: wrong, correct, or half a point."));
+          for (let i = ra; i <= rb; i++) {
+            const qq = quiz.questions[i];
+            p.append(h("div", { class: "markq" }, h("div", { class: "who" }, "Q" + (i - ra + 1) + ": " + (qq.text || "")),
+              h("div", { class: "what" }, "Answer: ", h("b", null, answerLabel(qq))), answerRows(qq)));
+          }
+          p.append(h("button", { class: "btn small", onclick: () => { showMarking = false; draw(); } }, "Hide answers"));
+        }
+        side.append(p);
+      }
+      if (q && game.phase === "reveal") side.append(h("div", { class: "panel" }, h("h3", null, "Fix a mark"), h("p", { class: "note" }, "Changes update the scores straight away."), answerRows(q)));
+      side.append(h("div", { class: "panel" }, h("h3", null, "Scoreboard"), h("p", { class: "note" }, "Counts revealed rounds only."), boardList(rows)));
+      const resetRow = confirmReset
+        ? h("span", { class: "confirm" }, "Clear all teams and scores?",
+            h("button", { class: "btn small danger", onclick: () => { game = blankGame(); confirmReset = false; saveGame(); broadcast(true); draw(); } }, "Yes, reset"),
+            h("button", { class: "btn small", onclick: () => { confirmReset = false; draw(); } }, "Cancel"))
+        : h("button", { class: "btn small", onclick: () => { confirmReset = true; draw(); } }, "Reset quiz");
+      side.append(h("div", { class: "panel" }, h("h3", null, "Quiz controls"),
+        h("div", { class: "row" },
+          game.phase !== "lobby" ? h("button", { class: "btn small", onclick: () => go("lobby", -1) }, "Back to lobby") : null,
+          resetRow),
+        !room ? h("p", { class: "note" }, "Live sync isn't set up yet, so phones can't join. Add the Supabase details to the page's settings.") : null,
+        dbNote ? h("p", { class: "note" }, dbNote) : null));
+
+      return h("div", { class: "run" }, stage, side);
+    }
+
+    // ----- question editor (rendered only on structural changes) -----
+    function editView() {
+      const wrap = h("div", { class: "editor" });
+      wrap.append(h("label", { class: "f" }, "Quiz name",
+        h("input", { type: "text", id: "quiz-title", value: quiz.title || "", maxlength: "60", placeholder: "Retreat quiz night",
+          oninput: (e) => { quiz.title = e.target.value; saveQuiz(); const b = document.querySelector(".brand"); if (b) b.firstChild.textContent = quiz.title || "Quiz night"; } })));
+      wrap.append(h("label", { class: "f" }, "Link teams open (shown as a QR code in the lobby)",
+        h("input", { type: "text", id: "quiz-join", value: quiz.joinUrl || DEFAULT_JOIN, maxlength: "300", oninput: (e) => { quiz.joinUrl = e.target.value.trim(); saveQuiz(); } })));
+      if (!quizLoaded && db) wrap.append(h("p", { class: "muted" }, "Loading your questions…"));
+      if (dbNote) wrap.append(h("p", { class: "note" }, dbNote));
+      if (quizLoaded && !quiz.questions.length) {
+        wrap.append(h("div", { class: "empty" }, h("h3", null, "Your quiz is empty"),
+          h("p", { class: "muted" }, "Add a question to start. Group questions into rounds by giving them the same round name.")));
+      }
+      quiz.questions.forEach((q, i) => wrap.append(qCard(q, i)));
+      wrap.append(h("div", { class: "row" },
+        h("button", { class: "btn", onclick: () => addQ("text") }, "+ Question"),
+        h("button", { class: "btn", onclick: () => addQ("text", true) }, "+ Picture question"),
+        h("button", { class: "btn", onclick: () => addQ("choice") }, "+ Multiple choice")));
+      const restoreInput = h("input", { type: "file", id: "restore-file", accept: "application/json,.json", hidden: true, onchange: async (e) => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        try {
+          const d = JSON.parse(await f.text());
+          if (!d || !Array.isArray(d.questions)) throw new Error("bad");
+          if (assets && assets.importAll) await assets.importAll(d.images);
+          quiz = { title: String(d.title || ""), joinUrl: typeof d.joinUrl === "string" ? d.joinUrl : "", questions: d.questions };
+          saveQuiz(); draw();
+        } catch { dbNote = "That file isn't a quiz backup from this page."; draw(); }
+      } });
+      wrap.append(h("div", { class: "row" },
+        h("button", { class: "btn small", type: "button", onclick: () => {
+          const ids = quiz.questions.map((q) => q.image).filter(Boolean);
+          const data = JSON.stringify({ ...quiz, images: assets && assets.exportAll ? assets.exportAll(ids) : {} });
+          const a = h("a", { href: URL.createObjectURL(new Blob([data], { type: "application/json" })), download: "quiz-backup.json" });
+          document.body.append(a); a.click(); a.remove();
+        } }, "Download backup"),
+        restoreInput,
+        h("button", { class: "btn small", type: "button", onclick: () => restoreInput.click() }, "Load a backup")));
+      wrap.append(h("p", { class: "note" }, "Changes save automatically in this browser on this computer only. Answers stay on this tab, so it's safe to project the Run the quiz tab. Download a backup when you're done editing, and load it on the laptop you'll use on the night."));
+      return wrap;
+    }
+    function addQ(type, pic) {
+      const last = quiz.questions[quiz.questions.length - 1];
+      quiz.questions.push({ id: "q" + uid(), round: last ? last.round : "Round 1", type, text: "", options: ["", "", "", ""], answer: type === "choice" ? 0 : "", points: 1, wantsPic: pic ? true : undefined });
+      saveQuiz(); draw();
+      const ids = document.querySelectorAll(".qcard textarea"); if (ids.length) ids[ids.length - 1].focus();
+    }
+    // shrink big photos so they load fast on phones
+    async function shrink(file) {
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+      try {
+        const bmp = await createImageBitmap(file);
+        const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+        if (scale === 1 && file.size < 1.5e6) return file;
+        const c = document.createElement("canvas");
+        c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+        c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+        return await new Promise((r) => c.toBlob((b) => r(b || file), "image/jpeg", 0.85));
+      } catch { return file; }
+    }
+    function picField(q) {
+      const box = h("div", { class: "row" });
+      const status = h("span", { class: "note" });
+      if (imgSrc(q)) {
+        box.append(h("img", { class: "thumb", src: imgSrc(q), alt: "Question picture" }),
+          h("button", { class: "btn small", type: "button", onclick: () => { q.image = null; saveQuiz(); draw(); } }, "Remove picture"));
+        return h("div", { class: "f" }, h("span", { class: "eyebrow" }, "Picture"), box);
+      }
+      if (!assets) {
+        if (!q.wantsPic) return null;
+        return h("p", { class: "note" }, "Picture uploads aren't available in this browser.");
+      }
+      const input = h("input", { type: "file", id: "pic-" + q.id, accept: "image/*", hidden: true, onchange: async (e) => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        status.textContent = "Uploading…";
+        try {
+          const blob = await shrink(f);
+          const res = await assets.upload(blob, blob.type ? undefined : { contentType: "image/jpeg" });
+          q.image = res.id; delete q.wantsPic; saveQuiz(); draw();
+        } catch (err) { status.textContent = "Couldn't upload that picture. Try a JPG or PNG under 20 MB."; }
+      } });
+      box.append(input, h("button", { class: "btn small", type: "button", onclick: () => input.click() }, q.wantsPic ? "Choose picture" : "+ Add picture"), status);
+      return h("div", { class: "f" }, q.wantsPic ? h("span", { class: "eyebrow" }, "Picture") : null, box);
+    }
+    function qCard(q, i) {
+      const set = (k, v, redraw) => { q[k] = v; saveQuiz(); if (redraw) draw(); };
+      const move = (d) => { const j = i + d; if (j < 0 || j >= quiz.questions.length) return; const a = quiz.questions; [a[i], a[j]] = [a[j], a[i]]; saveQuiz(); draw(); };
+      let confirmDel = false;
+      const delBox = h("span", { class: "confirm" });
+      const drawDel = () => delBox.replaceChildren(confirmDel
+        ? h("span", { class: "confirm" }, "Delete?", h("button", { class: "btn small danger", onclick: () => { quiz.questions.splice(i, 1); saveQuiz(); draw(); } }, "Delete"), h("button", { class: "btn small", onclick: () => { confirmDel = false; drawDel(); } }, "Keep"))
+        : h("button", { class: "btn small danger", onclick: () => { confirmDel = true; drawDel(); } }, "Delete"));
+      drawDel();
+      const body = [];
+      body.push(h("label", { class: "f" }, "Question",
+        h("textarea", { id: "qt-" + q.id, rows: "2", maxlength: "600", value: q.text, placeholder: "What is the capital of Australia?", oninput: (e) => set("text", e.target.value) })));
+      body.push(picField(q));
+      if (q.type === "choice") {
+        q.options = q.options && q.options.length === 4 ? q.options : ["", "", "", ""];
+        body.push(h("div", { class: "eyebrow" }, "Options (tick the right one)"),
+          h("div", { class: "grid2" }, q.options.map((o, oi) => h("div", { class: "optedit" },
+            h("input", { type: "radio", name: "ans-" + q.id, id: "ar-" + q.id + oi, "aria-label": "Option " + LETTERS[oi] + " is correct", checked: Number(q.answer) === oi, onchange: () => set("answer", oi) }),
+            h("input", { type: "text", id: "op-" + q.id + oi, maxlength: "120", value: o, placeholder: "Option " + LETTERS[oi], oninput: (e) => { q.options[oi] = e.target.value; saveQuiz(); } })))));
+      } else {
+        body.push(h("label", { class: "f" }, "Accepted answers (separate alternatives with | , small typos are forgiven)",
+          h("input", { type: "text", id: "ta-" + q.id, maxlength: "200", value: typeof q.answer === "string" ? q.answer : "", placeholder: "Canberra", oninput: (e) => set("answer", e.target.value) })));
+      }
+      return h("div", { class: "qcard" },
+        h("div", { class: "head" }, h("span", { class: "idx num" }, "Q" + (i + 1)),
+          h("span", { class: "spacer" }),
+          h("button", { class: "btn small", "aria-label": "Move up", disabled: i === 0, onclick: () => move(-1) }, "↑"),
+          h("button", { class: "btn small", "aria-label": "Move down", disabled: i === quiz.questions.length - 1, onclick: () => move(1) }, "↓"),
+          delBox),
+        h("div", { class: "fields3" },
+          h("label", { class: "f" }, "Round", h("input", { type: "text", id: "rd-" + q.id, maxlength: "60", value: q.round || "", oninput: (e) => set("round", e.target.value) })),
+          h("label", { class: "f" }, "Type", h("select", { id: "ty-" + q.id, onchange: (e) => { q.type = e.target.value; q.answer = q.type === "choice" ? 0 : ""; saveQuiz(); draw(); } },
+            h("option", { value: "choice", selected: q.type === "choice" }, "Multiple choice"),
+            h("option", { value: "text", selected: q.type === "text" }, "Typed answer"))),
+          h("label", { class: "f" }, "Points", h("input", { type: "number", id: "pt-" + q.id, min: "0", max: "20", value: q.points ?? 1, oninput: (e) => set("points", Math.max(0, Math.min(20, Number(e.target.value) || 0))) }))),
+        body);
+    }
+
+    function draw() {
+      const view = h("div", null, topBar(), tab === "edit" ? editView() : runView());
+      paint(app, view);
+    }
+
+    function start() {
+      rerender = () => { if (tab === "run") draw(); else { const pill = topBar().querySelector(".pill"); const old = document.querySelector(".bar .pill"); if (old && pill) old.replaceWith(pill); } };
+      draw();
+      if (db) {
+        const timer = setTimeout(() => { if (!quizLoaded) { dbNote = "Your saved questions can't be reached yet. Check your connection."; draw(); } }, 10000);
+        quizRef().onSnapshot((snap) => {
+          const d = snap.exists ? snap.data() : null;
+          if (!snap.metadata?.fromCache) clearTimeout(timer);
+          const incoming = d ? JSON.stringify(d) : "";
+          if (!quizLoaded) {
+            quizLoaded = true; dbNote = "";
+            if (d) { quiz = { title: d.title || "", joinUrl: typeof d.joinUrl === "string" ? d.joinUrl : "", questions: Array.isArray(d.questions) ? d.questions : [] }; lastSavedQuiz = incoming; }
+            draw(); broadcast(); return;
+          }
+          // another device or Claude changed the questions: take it if you're not mid-edit
+          if (d && !snap.metadata?.hasPendingWrites && incoming !== lastSavedQuiz && incoming !== JSON.stringify(quiz)) {
+            const editing = document.activeElement && document.activeElement.closest && document.activeElement.closest(".editor");
+            if (!editing) { quiz = { title: d.title || "", joinUrl: typeof d.joinUrl === "string" ? d.joinUrl : "", questions: Array.isArray(d.questions) ? d.questions : [] }; lastSavedQuiz = incoming; draw(); broadcast(); }
+          }
+        }, () => { clearTimeout(timer); quizLoaded = true; dbNote = "Saved questions aren't available in this view."; draw(); });
+        gameRef().get().then((snap) => {
+          const d = snap.exists ? snap.data() : null;
+          if (d && d.phase) { game = Object.assign(blankGame(), d); if (game.phase === "locked") game.phase = "closed"; draw(); broadcast(true); }
+        }).catch(() => {});
+      } else {
+        quizLoaded = true; dbNote = "Saving isn't available in this view, so questions added here last only until you close it."; draw();
+      }
+      if (room) {
+        room.presence({ role: "host" }).catch(() => {});
+        room.onPeers((ch) => {
+          readPeers(ch.peers);
+          if (ch.joined.some((p) => !p.isMe)) { lastImg = ""; broadcast(true); }
+          if (tab === "run") draw(); else rerender();
+        }, () => {});
+        setInterval(() => broadcast(true), 4000); // late joiners and dropped messages
+      }
+    }
+    return { start };
+  })();
+
+  // ================================================================
+  //                             TEAM
+  // ================================================================
+  const Team = (() => {
+    let name = store.get("pq.team") || "";
+    let joined = false;
+    let state = null, heardAt = 0;
+    let myAns = null; // { q, v }
+    let draft = "";
+    let lastKey = "";
+    let isEditor = false;
+
+    function setPresence() {
+      if (!room || !joined) return;
+      room.presence({ role: "team", team: name, ans: myAns }).catch(() => {});
+    }
+    function join(n) {
+      name = n.trim().replace(/\s+/g, " ").slice(0, 30);
+      if (!name) return;
+      store.set("pq.team", name); joined = true;
+      try { const saved = JSON.parse(store.get("pq.ans") || "null"); if (saved && saved.team === teamKey(name)) myAns = saved.a; } catch {}
+      setPresence(); draw(true);
+    }
+    function answer(v) {
+      if (!state || state.phase !== "open" || !state.q) return;
+      myAns = { q: state.q.id, v };
+      store.set("pq.ans", JSON.stringify({ team: teamKey(name), a: myAns }));
+      setPresence(); draw(true);
+    }
+
+    function header() {
+      return h("div", { class: "row" },
+        h("div", { class: "brand", style: "font-size:20px" }, (state && state.title) || "Quiz night"),
+        h("div", { class: "spacer" }),
+        h("span", { class: "pill" + (roomLive ? " live" : "") }, h("span", { class: "dot" }), roomLive ? "Live" : "Connecting…"),
+        isEditor ? h("a", { class: "btn small", href: "#", onclick: (e) => { e.preventDefault(); history.replaceState(null, "", location.pathname + location.search); location.reload(); } }, "Host view") : null);
+    }
+    function teamTag() {
+      return h("div", { class: "teamtag" }, h("span", { class: "eyebrow" }, "Team"), h("b", null, name),
+        h("span", { class: "spacer" }),
+        state && state.phase === "lobby" ? h("button", { class: "btn small", onclick: () => { joined = false; if (room) room.presence({ role: null, team: null, ans: null }).catch(() => {}); draw(true); } }, "Change") : null);
+    }
+
+    function joinCard() {
+      const others = room ? [...new Set(room.peers().filter((p) => !p.isMe && p.presence?.role === "team" && typeof p.presence.team === "string").map((p) => p.presence.team.slice(0, 30)))] : [];
+      const form = h("form", { class: "card", onsubmit: (e) => { e.preventDefault(); join(document.getElementById("team-name").value); } },
+        h("h1", { style: "font-size:30px" }, "Join the quiz"),
+        h("label", { class: "f" }, "Team name",
+          h("input", { type: "text", id: "team-name", maxlength: "30", autocomplete: "off", value: name, placeholder: "The Quizzly Bears", required: true })),
+        h("button", { class: "btn primary", type: "submit" }, "Join"),
+        h("p", { class: "note" }, "One phone per team. If your team is already in, type the exact same name to rejoin."),
+        others.length ? h("div", null, h("div", { class: "eyebrow", style: "margin-bottom:6px" }, "Already here"), h("div", { class: "chips" }, others.map((o) => h("button", { type: "button", class: "chip", onclick: () => join(o) }, o)))) : null);
+      return form;
+    }
+
+    function myRow() { return state?.board?.find((r) => r[0] === teamKey(name)); }
+
+    function body() {
+      if (!room) return h("div", { class: "card" }, h("div", { class: "big-status" }, "Can't reach the live quiz"),
+        h("p", null, "Check that your phone is online, then reload this page."));
+      if (!joined) return joinCard();
+      const parts = [teamTag()];
+      const s = state;
+      if (!s || Date.now() - heardAt > 15000) {
+        parts.push(h("div", { class: "big-status wait-dots" }, "Waiting for the host"), h("p", { class: "muted" }, "Keep this page open. Questions will appear here."));
+        return h("div", { class: "card" }, parts);
+      }
+      const k = teamKey(name);
+      const row = myRow();
+      const board = () => boardList(s.board.map((r) => ({ k: r[0], name: r[1], s: r[2] })), { me: k });
+      if (s.phase === "lobby") {
+        parts.push(h("div", { class: "big-status" }, "You're in!"), h("p", { class: "muted" }, "The quiz starts soon. Look up at the big screen."));
+        const others = s.board.map((r) => r[1]);
+        if (others.length) parts.push(h("div", { class: "eyebrow" }, "Teams so far"), h("div", { class: "chips" }, others.map((o) => h("span", { class: "chip" }, o))));
+        return h("div", { class: "card" }, parts);
+      }
+      if (s.phase === "final") {
+        const pos = s.board.findIndex((r) => r[0] === k);
+        const top = s.board[0] ? s.board[0][2] : 0;
+        const tied = s.board.filter((r) => r[2] === top).length > 1;
+        parts.push(h("div", { class: "eyebrow" }, "Final scores"),
+          h("div", { class: "big-status" }, pos < 0 ? "That's the quiz!" : s.board[pos][2] === top ? (tied ? "Joint first!" : "You won!") : "You came " + ordinal(pos + 1)), board());
+        return h("div", { class: "card" }, parts);
+      }
+      const r = s.round || {};
+      parts.push(h("div", { class: "row" }, s.q ? h("span", { class: "qcount num" }, "Question " + r.n + " of " + r.of) : null, r.name ? h("span", { class: "eyebrow" }, r.name) : null));
+      if (s.phase === "marking") {
+        parts.push(h("div", { class: "big-status" }, "End of the round"), h("p", { class: "muted" }, "The host is marking. Answers and scores are coming up on the big screen."));
+        return h("div", { class: "card" }, parts);
+      }
+      if (s.phase === "scores") {
+        parts.push(h("div", { class: "big-status" }, row ? fmt(row[2]) + (row[2] === 1 ? " point" : " points") : "Scores"), board());
+        return h("div", { class: "card" }, parts);
+      }
+      const q = s.q; if (!q) return h("div", { class: "card" }, parts, h("p", { class: "muted" }, "Hang on…"));
+      const mine = myAns && myAns.q === q.id ? myAns.v : null;
+      parts.push(h("div", { class: "qtext" }, q.text));
+      if (imgSrc(q)) parts.push(h("img", { class: "qimg", src: imgSrc(q), alt: "Question picture" }));
+      const open = s.phase === "open";
+      if (s.phase === "reveal") {
+        const v = s.marks ? markVal(s.marks[k]) : 0;
+        const said = s.said && s.said[k];
+        const hasAns = (s.marks && k in s.marks) || said != null;
+        parts.push(h("div", { class: "verdict " + (v === 1 ? "ok" : v === 0.5 ? "half" : "no") },
+          !hasAns ? "No answer this time" : v === 1 ? "Correct! +" + q.points : v === 0.5 ? "Half a point!" : "Not this time",
+          h("small", null, "Answer: " + s.answer), said != null ? h("small", null, "You said: " + said) : null));
+        return h("div", { class: "card" }, parts);
+      }
+      if (q.type === "choice") {
+        parts.push(h("div", { class: "opts" }, (q.options || []).map((o, i) => o ? h("button", {
+          class: "opt o" + i + (mine === i ? " picked" : mine != null ? " notpicked" : ""), disabled: !open, "aria-pressed": String(mine === i),
+          onclick: () => answer(i) }, h("span", { class: "letter" }, LETTERS[i]), h("span", null, o)) : null)));
+      } else if (open) {
+        if (!draft && typeof mine === "string") draft = mine;
+        parts.push(h("form", { class: "row", onsubmit: (e) => { e.preventDefault(); const v = document.getElementById("ans-text").value.trim(); if (v) answer(v.slice(0, 200)); } },
+          h("input", { type: "text", id: "ans-text", maxlength: "200", autocomplete: "off", value: draft, placeholder: "Type your answer", oninput: (e) => { draft = e.target.value; }, style: "flex:1;min-width:0" }),
+          h("button", { class: "btn primary", type: "submit" }, mine != null ? "Update" : "Send")));
+      } else if (mine != null) {
+        parts.push(h("p", null, "Your answer: ", h("b", null, String(mine))));
+      }
+      if (open) parts.push(mine != null ? h("div", { class: "locked" }, "✓ Sent" + (q.type === "choice" ? ": " + LETTERS[mine] : ": " + mine) + ". You can change it until answers close.")
+        : h("p", { class: "note" }, q.type === "choice" ? "Tap an answer to send it." : "Send your answer before the host closes answers."));
+      if (s.phase === "closed") parts.push(h("p", { class: "muted" }, mine != null ? "Answers are closed. You'll find out how you did at the end of the round." : "Answers are closed. You didn't send one this time."));
+      return h("div", { class: "card" }, parts);
+    }
+    const ordinal = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
+
+    function draw(force) {
+      const key = JSON.stringify([state, joined, myAns, roomLive, name, Math.floor((Date.now() - heardAt) / 15000) > 0, Object.keys(window.__imgs).length]);
+      if (!force && key === lastKey) return;
+      lastKey = key;
+      paint(app, h("div", { class: "phone" }, header(), body()));
+    }
+
+    function start(editor) {
+      isEditor = editor;
+      rerender = () => draw();
+      draw(true);
+      if (!room) return;
+      room.on("state", (msg) => {
+        const d = msg.data; if (!d || typeof d !== "object" || d.v !== 2) return;
+        if (state && state.q && d.q && state.q.id !== d.q.id) draft = "";
+        state = d; heardAt = Date.now(); draw();
+      }, () => draw(true));
+      room.onPeers(() => { if (!joined) draw(true); }, () => {});
+      room.on("img", (msg) => { const d = msg.data; if (d && typeof d.id === "string" && typeof d.d === "string" && d.d.startsWith("data:image/") && d.d.length < 900000) { window.__imgs[d.id] = d.d; draw(true); } });
+      if (name) join(name); // phone refreshed mid-quiz: rejoin as the same team
+      setInterval(() => draw(), 5000);
+    }
+    return { start };
+  })();
+
+  boot();
+})();
+</script>
+
+</body>
+</html>
