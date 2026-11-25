@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="logo.png">
 <script>
   // Live sync settings (Supabase project URL and anon public key; both are designed to be public)
   window.QUIZ_CONFIG = {
@@ -10,6 +11,7 @@
     supabaseKey: "sb_publishable_RFvXkELEojTwcbxtEiTBGw_CzAYkmRN",
     room: "retreat-quiz"
   };
+  window.QUIZ_LOGO = "logo.png";
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="adapter.js"></script>
@@ -18,34 +20,47 @@
 <body>
 <title>Retreat Quiz Night</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap">
 <style>
 /* Layout: host = big-screen stage + side scoreboard; team = one-column phone card. Pub "bottle green and brass" palette. */
+/* Layout: host = big-screen stage + side scoreboard; team = one-column phone card. XPose identity: white, cyan-to-blue and yellow-to-orange, dark grey type, triangle motif. */
 :root {
-  --bg: #eef2ec;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --sunk: #e1e8df;
-  --ink: #15241d;
-  --muted: #55665d;
-  --line: #c9d4c6;
-  --brass: #a8691a;
+  --sunk: #eef4f8;
+  --ink: #3d3d3d;
+  --muted: #6b7178;
+  --line: #d6e1ea;
+  --brass: #0a8fd8;          /* primary accent: XPose blue */
   --brass-ink: #ffffff;
-  --good: #1f7a4a;
-  --bad: #b23a2b;
-  --opt-a: #d9502c; --opt-b: #2a7da3; --opt-c: #d6a500; --opt-d: #8552ad;
-  --opt-c-ink: #1d1600;
-  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --sun: #f7a823;            /* XPose yellow-orange */
+  --grad-blue: linear-gradient(135deg, #00e1ff 0%, #00b4ff 45%, #0085f5 100%);
+  --grad-sun: linear-gradient(180deg, #fcee21 0%, #fbb03b 45%, #f7931e 100%);
+  --good: #1e8a4c;
+  --bad: #c43d2e;
+  --opt-a: #0a8fd8; --opt-b: #f7931e; --opt-c: #fbc531; --opt-d: #4d4d4d;
+  --opt-c-ink: #2b2100;
+  --display: "Lato", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --body: "Lato", "Segoe UI", system-ui, -apple-system, sans-serif;
   --radius: 14px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0e1d17; --surface: #16291f; --sunk: #0a1611; --ink: #e6eee4; --muted: #9db0a4; --line: #2b4436;
-  --brass: #e3a54d; --brass-ink: #1b1204; --good: #4cc584; --bad: #f07a68; color-scheme: dark;
+  --bg: #0c1824; --surface: #13222f; --sunk: #0a141e; --ink: #e8eef3; --muted: #9fb0bf; --line: #24394a;
+  --brass: #2bb6f5; --brass-ink: #04121c; --sun: #fbb03b; --good: #4cc584; --bad: #f07a68; --opt-d: #6b7178; color-scheme: dark;
 } }
 :root[data-theme="dark"] {
-  --bg: #0e1d17; --surface: #16291f; --sunk: #0a1611; --ink: #e6eee4; --muted: #9db0a4; --line: #2b4436;
-  --brass: #e3a54d; --brass-ink: #1b1204; --good: #4cc584; --bad: #f07a68; color-scheme: dark;
+  --bg: #0c1824; --surface: #13222f; --sunk: #0a141e; --ink: #e8eef3; --muted: #9fb0bf; --line: #24394a;
+  --brass: #2bb6f5; --brass-ink: #04121c; --sun: #fbb03b; --good: #4cc584; --bad: #f07a68; --opt-d: #6b7178; color-scheme: dark;
 }
+/* brand stripes, as on the XPose slides: yellow-orange edge on the left, thin bar along the bottom */
+body::after { content: ""; position: fixed; left: 0; top: 0; bottom: 0; width: 6px; background: var(--grad-sun); pointer-events: none; }
+.brandbar { height: 6px; background: var(--grad-sun); position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; }
+.logo { height: 44px; width: auto; display: block; }
+.phone .logo { height: 36px; }
+.qcount { color: var(--brass) !important; }
+.board li:first-child .pos { color: var(--sun) !important; }
+.lobby-hero h2::before, .headline::before { content: ""; display: inline-block; width: 0; height: 0; border-left: .5em solid var(--sun); border-top: .3em solid transparent; border-bottom: .3em solid transparent; margin-right: .3em; vertical-align: .12em; }
+.btn.primary { background: var(--grad-blue); border-color: transparent; }
 html, body { min-height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
 #app { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 32px; max-width: 1280px; margin: 0 auto; }
@@ -69,7 +84,7 @@ a.btn { text-decoration: none; color: inherit; display: inline-block; }
 
 /* top bar */
 .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-.brand { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
+.brand { font-family: var(--display); font-weight: 900; font-size: 22px; letter-spacing: -.01em; }
 .brand small { font-family: var(--body); font-weight: 400; font-size: 14px; color: var(--muted); margin-left: 8px; }
 .tabs { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 4px; gap: 4px; }
 .tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); }
@@ -185,6 +200,7 @@ textarea { resize: vertical; min-height: 56px; }
 </style>
 
 <div id="app"><p class="muted">Loading the quiz…</p></div>
+<div class="brandbar" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
@@ -381,7 +397,7 @@ textarea { resize: vertical; min-height: 56px; }
     function payload() {
       const q = curQ();
       const p = {
-        v: 2, title: quiz.title || "Quiz night", phase: game.phase, total: quiz.questions.length,
+        v: 2, title: quiz.title || "XPose Retreat Quiz", phase: game.phase, total: quiz.questions.length,
         board: scoreBoard(quiz, game).slice(0, 40).map((r) => [r.k, r.name.slice(0, 30), r.s]),
       };
       if (q && game.phase !== "lobby" && game.phase !== "final") {
@@ -460,7 +476,8 @@ textarea { resize: vertical; min-height: 56px; }
     function topBar() {
       const n = Object.keys(onlineTeams).length;
       return h("div", { class: "bar" },
-        h("div", { class: "brand" }, quiz.title || "Quiz night", h("small", null, "Host")),
+        window.QUIZ_LOGO ? h("img", { class: "logo", src: window.QUIZ_LOGO, alt: "XPose" }) : null,
+        h("div", { class: "brand" }, quiz.title || "XPose Retreat Quiz", h("small", null, "Host")),
         h("div", { class: "tabs", role: "tablist" },
           [["run", "Run the quiz"], ["edit", "Questions"]].map(([id, label]) =>
             h("button", { role: "tab", "aria-selected": String(tab === id), onclick: () => { tab = id; store.set("pq.tab", id); draw(); } }, label))),
@@ -610,8 +627,8 @@ textarea { resize: vertical; min-height: 56px; }
     function editView() {
       const wrap = h("div", { class: "editor" });
       wrap.append(h("label", { class: "f" }, "Quiz name",
-        h("input", { type: "text", id: "quiz-title", value: quiz.title || "", maxlength: "60", placeholder: "Retreat quiz night",
-          oninput: (e) => { quiz.title = e.target.value; saveQuiz(); const b = document.querySelector(".brand"); if (b) b.firstChild.textContent = quiz.title || "Quiz night"; } })));
+        h("input", { type: "text", id: "quiz-title", value: quiz.title || "", maxlength: "60", placeholder: "XPose Retreat Quiz",
+          oninput: (e) => { quiz.title = e.target.value; saveQuiz(); const b = document.querySelector(".brand"); if (b) b.firstChild.textContent = quiz.title || "XPose Retreat Quiz"; } })));
       wrap.append(h("label", { class: "f" }, "Link teams open (shown as a QR code in the lobby)",
         h("input", { type: "text", id: "quiz-join", value: quiz.joinUrl || DEFAULT_JOIN, maxlength: "300", oninput: (e) => { quiz.joinUrl = e.target.value.trim(); saveQuiz(); } })));
       if (!quizLoaded && db) wrap.append(h("p", { class: "muted" }, "Loading your questions…"));
@@ -805,7 +822,8 @@ textarea { resize: vertical; min-height: 56px; }
 
     function header() {
       return h("div", { class: "row" },
-        h("div", { class: "brand", style: "font-size:20px" }, (state && state.title) || "Quiz night"),
+        window.QUIZ_LOGO ? h("img", { class: "logo", src: window.QUIZ_LOGO, alt: "XPose" }) : null,
+        h("div", { class: "brand", style: "font-size:20px" }, (state && state.title) || "XPose Retreat Quiz"),
         h("div", { class: "spacer" }),
         h("span", { class: "pill" + (roomLive ? " live" : "") }, h("span", { class: "dot" }), roomLive ? "Live" : "Connecting…"),
         isEditor ? h("a", { class: "btn small", href: "#", onclick: (e) => { e.preventDefault(); history.replaceState(null, "", location.pathname + location.search); location.reload(); } }, "Host view") : null);
